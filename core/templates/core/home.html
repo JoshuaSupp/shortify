@@ -1,0 +1,200 @@
+{% load static %}
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Shortify Shorts Generator</title>
+    <link rel="icon" href="{% static 'core/img/profilepic1.png' %}" type="image/x-icon">
+    <link rel="stylesheet" type="text/css" href="{% static 'core/css/bootstrap.min.css' %}">
+    <link rel="stylesheet" href="https://netdna.bootstrapcdn.com/font-awesome/4.0.3/css/font-awesome.css">
+    <link href="https://fonts.googleapis.com/css?family=Poppins:400,700|Roboto:400,700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Poppins', Arial, sans-serif;
+            background: rgba(255,255,255,0.8);
+            margin: 0; padding: 0;
+        }
+        .shortify-form-box {
+            max-width: 500px;
+            margin: 60px auto 0 auto;
+            background: rgba(255,255,255,0.8);
+            border-radius: 20px;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.07);
+            padding: 40px 32px 32px 32px;
+        }
+        .shortify-btn {
+            background: linear-gradient(90deg,#7b4fff 0%,#18b2fa 100%);
+            border: none;
+            color: #fff;
+            font-weight: 600;
+            font-size: 1.1rem;
+            border-radius: 14px;
+            padding: 12px 0;
+        }
+        .shorts-container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 24px;
+            justify-content: center;
+            margin-top: 48px;
+        }
+        .short-card {
+            border-radius: 18px;
+            box-shadow: 0 2px 10px 0 rgba(80,110,255,.09);
+            background: #fff;
+            padding: 18px 14px 12px 14px;
+            min-height: 370px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            width: 320px;
+        }
+        .short-card video {
+            border-radius: 14px;
+            width: 100%;
+            max-width: 320px;
+        }
+        #bgvid {
+            position: fixed;
+            right: 0; bottom: 0; left: 0; top: 0;
+            min-width: 100vw; min-height: 100vh;
+            width: 100px; height: auto; z-index: -1;
+            object-fit: cover;
+            background: #000; opacity: 1; pointer-events: none;
+        }
+        #progress-section { display: none; margin: 18px 0; }
+        #progress-info { margin-bottom:8px;font-weight:600;color:#222;}
+        .progress { height: 22px; }
+        #progress-bar {
+            width: 0%; margin-bottom:8px;font-weight:600;color:#222;
+        }
+        .error-message {
+            color: #d9534f; font-weight: bold; margin: 16px 0 0 0;
+        }
+        .success-message {
+            color: #218838; font-weight: 500; margin: 16px 0 0 0;
+        }
+    </style>
+</head>
+<body>
+<video autoplay muted loop id="bgvid">
+    <source src="{% static 'core/videos/backgroundvid.mp4' %}" type="video/mp4">
+</video>
+<div class="shortify-form-box text-center">
+    <img src="{% static 'core/img/shortifypic.png' %}" style="height:120px;width:auto;margin-bottom:10px;margin-left: 37%;" alt="Shortify Logo">
+    <h2 style="font-weight:800;color:#26276d;margin: 16px 0 8px 0;">
+        <i class="fa fa-film"></i> Convert YouTube Videos to Shorts
+    </h2>
+    <p style="color:#656c8a;">
+        Paste your YouTube URL below.<br>
+        We’ll generate a viral-ready Short for TikTok, Insta Reels & YouTube Shorts!
+    </p>
+    <form id="shortifyForm" style="margin-bottom:0;">
+        {% csrf_token %}
+        <input type="url" name="url" class="form-control form-control-lg"
+            placeholder="Paste YouTube link here..." required
+            style="margin-top:24px;margin-bottom:16px;width: 100%;">
+        <button type="submit" class="btn shortify-btn btn-lg" style="width:100%;">
+            <i class="fa fa-bolt"></i> Generate Short
+        </button>
+    </form>
+    <div id="loader" style="display:none;margin:10px auto;">
+        <div class="spinner-border text-info"></div>
+    </div>
+    <div id="progress-section">
+        <div id="progress-info"></div>
+        <div class="progress">
+            <div id="progress-bar" class="progress-bar progress-bar-striped progress-bar-animated" style="width:0%;display: none;">0%</div>
+        </div>
+    </div>
+    <div id="message-area"></div>
+</div>
+<div id="shorts-container" class="shorts-container"></div>
+
+<script>
+document.addEventListener("DOMContentLoaded", function() {
+    const form = document.getElementById("shortifyForm");
+    form.onsubmit = function(e) {
+        e.preventDefault();
+        document.getElementById("loader").style.display = "inline-block";
+        document.getElementById("progress-section").style.display = "block";
+        document.getElementById("progress-bar").style.width = "0%";
+        document.getElementById("progress-bar").textContent = "0%";
+        document.getElementById("progress-info").textContent = "Starting analysis...";
+
+        const formData = new FormData(form);
+        const task_id = crypto.randomUUID();
+        formData.append("task_id", task_id);
+
+        // Save task_id for polling
+        window.currentTaskId = task_id;
+
+        fetch("", {
+            method: "POST",
+            body: formData,
+            headers: {
+                "X-CSRFToken": formData.get('csrfmiddlewaretoken')
+            }
+        })
+        .then(res => res.json())
+        .then(data => {
+            document.getElementById("loader").style.display = "none";
+            if (data.success) {
+                // Add the new short to the container (don't clear others!)
+                const container = document.getElementById("shorts-container");
+                const shortNumber = container.children.length + 1;
+                const newShortHTML = `
+                    <div class="short-card">
+                        <video width="320" height="560" controls>
+                            <source src="${data.short_url}" type="video/mp4">
+                            Your browser does not support the video tag.
+                        </video>
+                        <div style="margin-top:10px;">
+                            <span class="badge bg-info text-dark">Short #${shortNumber}</span>
+                        </div>
+                    </div>
+                `;
+                container.insertAdjacentHTML("afterbegin", newShortHTML);
+                document.getElementById("progress-info").textContent = "Short created! You can generate another.";
+                document.getElementById("progress-bar").style.width = "100%";
+                document.getElementById("progress-bar").textContent = "Analysis Done";
+            } else {
+                document.getElementById("message-area").innerHTML = `<div class="error-message">${data.msg}</div>`;
+            }
+        });
+
+        // Start polling progress
+        pollProgress(task_id);
+    };
+});
+
+function pollProgress(task_id) {
+    fetch("/progress/?task_id=" + encodeURIComponent(task_id))
+    .then(res => res.json())
+    .then(data => {
+        let total = data.total_bytes || data.total_bytes_estimate || 0;
+        let downloaded = data.downloaded_bytes || 0;
+        let percent = (total > 0) ? ((downloaded / total) * 100).toFixed(1) : 0;
+
+        document.getElementById("progress-bar").style.width = percent + "%";
+        document.getElementById("progress-bar").textContent = percent + "%";
+
+        let etaText = (typeof data.eta !== "undefined" && data.eta !== null)
+            ? parseFloat(data.eta).toFixed(1) + "s"
+            : "--";
+        document.getElementById("progress-info").textContent = "Analyzing Video: " + percent + "% | Time left: " + etaText;
+
+        if (data.status === "downloading") {
+            setTimeout(() => pollProgress(task_id), 700);
+        } else if (data.status === "finished" || data.status === "done") {
+            document.getElementById("progress-bar").style.width = "100%";
+            document.getElementById("progress-bar").textContent = "Analysis Done";
+            document.getElementById("progress-info").textContent = "Analysis complete! Please wait for your short.";
+        } else {
+            setTimeout(() => pollProgress(task_id), 500);
+        }
+    })
+    .catch(() => setTimeout(() => pollProgress(task_id), 1000));
+}
+</script>
+</body>
+</html>
