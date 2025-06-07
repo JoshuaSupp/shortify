@@ -9,7 +9,5 @@ services:
         value: videoshorts.settings
       - key: SECRET_KEY
         value: django-insecure-p)^!jd4n$7h_942*w!euvl+**@h-o*^o)n_es%+dw8jufg#nn*
-        sync: false
       - key: DATABASE_URL
-        sync: false
-    staticPublishPath: staticfiles
+        value: ""
